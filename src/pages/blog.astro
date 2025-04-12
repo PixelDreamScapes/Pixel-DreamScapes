@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { supabase } from '../lib/supabaseClient.ts'
+
+
+const { data: posts, error } = await supabase
+  .from('posts')
+  .select('*')
+  .order('created_at', { ascending: false })
+---
+<BaseLayout title="Blog">
+  <h1 class="text-3xl font-bold mb-6">Latest Posts</h1>
+
+  {error && <p class="text-red-500">Error: {error.message}</p>}
+
+  <ul class="space-y-4">
+    {posts?.map(post => (
+      <li>
+        <a class="text-lg text-primary hover:underline" href={`/blog/${post.slug}`}>
+          {post.title}
+        </a>
+      </li>
+    ))}
+  </ul>
+</BaseLayout>

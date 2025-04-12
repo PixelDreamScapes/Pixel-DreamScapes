@@ -1,0 +1,28 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { supabase } from '../../lib/supabaseClient.ts'
+
+const { slug } = Astro.params
+
+const { data: post, error } = await supabase
+  .from('posts')
+  .select('*')
+  .eq('slug', slug)
+  .single()
+---
+<BaseLayout title={post?.title || 'Post'}>
+  {error && (
+    <p class="text-red-500">Error: {error.message}</p>
+  )}
+  {post && (
+    <>
+      <h1 class="text-3xl font-bold mb-4">{post.title}</h1>
+      <p class="text-gray-400 text-sm mb-6">{new Date(post.created_at).toLocaleDateString()}</p>
+      <article class="prose prose-invert max-w-none">
+        {post.body}
+      </article>
+    </>
+  )}
+</BaseLayout>
