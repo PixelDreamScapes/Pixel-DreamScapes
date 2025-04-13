@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import { supabase } from '../lib/supabaseClient.ts'
-import "../styles/global.css";import "../styles/global.css"
+import "../styles/global.css";
 
 const { data: posts } = await supabase
   .from('posts')
@@ -13,14 +13,38 @@ const { data: posts } = await supabase
 <BaseLayout title="Pixel DreamScapes">
 
   <main class="min-h-screen bg-[#0e0e0e] text-white font-sans p-8">
-    <section class="text-center mb-12">
-      <h1 class="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
-        Welcome to <span class="text-[#8e8aff]">Pixel DreamScapes</span>
-      </h1>
-      <p class="text-gray-400 max-w-xl mx-auto text-lg">
-        Your source for curated tech, dreamy gear reviews, and digital self-expression.
-      </p>
-    </section>
+  <section class="relative overflow-hidden py-16">
+  <div class="absolute inset-0 pixel-bg"></div>
+  <div class="container mx-auto px-6 relative z-10">
+    <div class="flex flex-col md:flex-row items-center">
+      <div class="md:w-1/2 mb-10 md:mb-0">
+        <h1 class="font-['Press_Start_2P'] text-3xl md:text-4xl leading-tight mb-6 text-white">
+          <span class="block">LEVEL UP YOUR</span>
+          <span class="block bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+            GAMING EXPERIENCE
+          </span>
+        </h1>
+        <p class="font-['VT323'] text-xl md:text-2xl mb-8">
+          Explore the latest gaming gear, tech reviews, and exclusive deals to maximize your digital adventures.
+        </p>
+        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+          <button class="pixel-button bg-primary text-white font-['Press_Start_2P'] text-sm py-3 px-6 rounded-button">
+            START QUEST
+          </button>
+          <button class="pixel-button bg-black border-2 border-primary text-primary font-['Press_Start_2P'] text-sm py-3 px-6 rounded-button">
+            VIEW INVENTORY
+          </button>
+        </div>
+      </div>
+      <div class="md:w-1/2 flex justify-center">
+        <!-- Use a placeholder for now or dynamic post images -->
+        <div class="pixel-border bg-black p-4">
+          <img src="/images/gear-hero.jpg" alt="Preview" />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
     <section class="max-w-5xl mx-auto">
       <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">Latest Posts</h2>
@@ -36,4 +60,26 @@ const { data: posts } = await supabase
       </ul>
     </section>
   </main>
+  <script>
+       tailwind.config = {
+        theme: {
+          extend: {
+            colors: { primary: "#8A5CF5", secondary: "#57B5E7" },
+            borderRadius: {
+              none: "0px",
+              sm: "4px",
+              DEFAULT: "8px",
+              md: "12px",
+              lg: "16px",
+              xl: "20px",
+              "2xl": "24px",
+              "3xl": "32px",
+              full: "9999px",
+              button: "8px",
+            },
+          },
+        },
+      };
+  </script>
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
 </BaseLayout>
