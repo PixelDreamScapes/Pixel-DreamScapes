@@ -11,18 +11,143 @@ const { data: post, error } = await supabase
   .select('*')
   .eq('slug', slug)
   .single()
+
+const { data: comments, error: commentError } = await supabase
+  .from('comments')
+  .select('*')
+  .eq('post_slug', slug)
+  .order('created_at', { ascending: true })
+
+// Pass env vars to client-side script
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL
+const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY
 ---
 <BaseLayout title={post?.title || 'Post'}>
   {error && (
     <p class="text-red-500">Error: {error.message}</p>
   )}
+  <a href="/blog" class="text-primary underline hover:text-secondary block mb-6">← Back to Blog</a>
+
   {post && (
     <>
       <h1 class="text-3xl font-bold mb-4">{post.title}</h1>
-      <p class="text-gray-400 text-sm mb-6">{new Date(post.created_at).toLocaleDateString()}</p>
-      <article class="prose prose-invert max-w-none">
-        {post.body}
-      </article>
+      <p class="text-gray-400 text-sm mb-6">
+        {new Date(post.created_at).toLocaleDateString()}
+      </p>
+      <article class="prose prose-invert max-w-none" set:html={post.body} />
     </>
   )}
+
+  {!post && !error && (
+    <p class="text-gray-400 italic">This post doesn't exist.</p>
+  )}
+
+  <hr class="my-10 border-t border-gray-700" />
+
+  <section class="mt-10">
+    <h2 class="text-2xl font-bold mb-4">Comments</h2>
+<p style="color:limegreen;">Page Loaded: Slug = {slug}</p>
+
+    {comments?.length > 0 ? (
+      <ul class="space-y-4 mb-8">
+        {comments.map(comment => (
+          <li class="border border-gray-700 rounded-lg p-4">
+            <p class="text-sm text-gray-400 mb-1">
+              {new Date(comment.created_at).toLocaleDateString()} — <strong>{comment.author}</strong>
+            </p>
+            <p>{comment.content}</p>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="text-gray-500 italic mb-8">No comments yet. Be the first!</p>
+    )}
+
+    <form id="comment-form" class="space-y-4">
+      <input type="hidden" name="slug" value={slug} />
+      <input
+        name="author"
+        type="text"
+        placeholder="Your name"
+        required
+        class="w-full bg-[#1a1a1a] border border-gray-700 px-4 py-2 rounded text-white"
+      />
+      <textarea
+        name="content"
+        placeholder="Write a comment..."
+        required
+        class="w-full bg-[#1a1a1a] border border-gray-700 px-4 py-2 rounded text-white"
+      ></textarea>
+      <button
+        type="submit"
+        class="bg-primary px-6 py-2 rounded text-white hover:opacity-90 transition"
+      >
+        Post Comment
+      </button>
+    </form>
+  </section>
 </BaseLayout>
+<!-- Load Supabase UMD bundle -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.js"></script>
+
+<!-- Live comment script -->
+<script is:inline>
+  const supabase = window.supabase.createClient(
+    "{SUPABASE_URL}",
+    "{SUPABASE_KEY}"
+  );
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log("Script loaded");
+
+    const form = document.querySelector('#comment-form');
+    const authorInput = form?.querySelector('input[name="author"]');
+    const contentInput = form?.querySelector('textarea[name="content"]');
+    const slug = form?.querySelector('input[name="slug"]')?.value;
+
+    if (!form || !authorInput || !contentInput || !slug) {
+      console.warn("Missing comment form elements");
+      return;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const author = authorInput.value.trim();
+      const content = contentInput.value.trim();
+
+      if (!author || !content) {
+        alert('Please fill out all fields.');
+        return;
+      }
+
+      console.log("Posting comment:", { author, content, slug });
+
+      const { error } = await supabase.from('comments').insert([
+        { post_slug: slug, author, content }
+      ]);
+
+      if (error) {
+        alert('Failed to post comment.');
+        console.error(error);
+      } else {
+        alert('Comment posted!');
+        contentInput.value = '';
+        location.reload();
+      }
+    });
+  });
+</script>
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    const marker = document.createElement('p');
+    marker.textContent = "Script loaded and DOM ready";
+    marker.style.color = 'limegreen';
+    document.body.appendChild(marker);
+
+    const form = document.querySelector('#comment-form');
+    const feedback = document.createElement('p');
+    feedback.textContent = form ? "Comment form found" : "Comment form NOT found";
+    feedback.style.color = form ? 'limegreen' : 'red';
+    document.body.appendChild(feedback);
+  });
+</script>
