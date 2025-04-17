@@ -9,6 +9,7 @@ const { data: posts, error } = await supabase
   .order('created_at', { ascending: false })
 ---
 <BaseLayout title="Blog">
+<a href="/" class="text-primary underline hover:text-secondary block mb-6">← Back to Home</a>
   <h1 class="text-3xl font-bold mb-6">Latest Posts</h1>
 
   {error && <p class="text-red-500">Error: {error.message}</p>}
@@ -22,4 +23,5 @@ const { data: posts, error } = await supabase
       </li>
     ))}
   </ul>
+  
 </BaseLayout>
