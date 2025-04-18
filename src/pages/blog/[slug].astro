@@ -1,28 +1,150 @@
 ---
 export const prerender = false;
 
-import BaseLayout from '../../layouts/BaseLayout.astro'
-import { supabase } from '../../lib/supabaseClient.ts'
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { supabase } from '../../lib/supabaseClient.ts';
 
-const { slug } = Astro.params
+const { slug } = Astro.params;
 
 const { data: post, error } = await supabase
   .from('posts')
   .select('*')
   .eq('slug', slug)
-  .single()
+  .single();
+
+const { data: comments, error: commentError } = await supabase
+  .from('comments')
+  .select('*')
+  .eq('post_slug', slug)
+  .order('created_at', { ascending: true });
+
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 ---
+
 <BaseLayout title={post?.title || 'Post'}>
-  {error && (
-    <p class="text-red-500">Error: {error.message}</p>
-  )}
+  {error && <p class="text-red-500">Error: {error.message}</p>}
+  <a href="/blog" class="text-primary underline hover:text-secondary block mb-6">← Back to Blog</a>
+
   {post && (
     <>
       <h1 class="text-3xl font-bold mb-4">{post.title}</h1>
-      <p class="text-gray-400 text-sm mb-6">{new Date(post.created_at).toLocaleDateString()}</p>
-      <article class="prose prose-invert max-w-none">
-        {post.body}
-      </article>
+      <p class="text-gray-400 text-sm mb-6">
+        {new Date(post.created_at).toLocaleDateString()}
+      </p>
+      <article class="prose prose-invert max-w-none" set:html={post.body} />
     </>
   )}
+
+  <hr class="my-10 border-t border-gray-700" />
+
+  <section class="mt-10">
+    <h2 class="text-2xl font-bold mb-4">Comments</h2>
+
+    <ul id="comment-list" class="space-y-4 mb-8">
+      {comments?.map(comment => (
+        <li class="border border-gray-700 rounded-lg p-4">
+          <p class="text-sm text-gray-400 mb-1">
+            {new Date(comment.created_at).toLocaleDateString()} — <strong>{comment.author}</strong>
+          </p>
+          <p>{comment.content}</p>
+        </li>
+      ))}
+    </ul>
+
+    <form id="comment-form" class="space-y-4">
+      <input type="hidden" name="slug" value={slug} />
+      <input
+        name="author"
+        type="text"
+        placeholder="Your name"
+        required
+        class="w-full bg-[#1a1a1a] border border-gray-700 px-4 py-2 rounded text-white"
+      />
+      <textarea
+        name="content"
+        placeholder="Write a comment..."
+        required
+        class="w-full bg-[#1a1a1a] border border-gray-700 px-4 py-2 rounded text-white"
+      ></textarea>
+      <button
+        type="submit"
+        class="bg-primary px-6 py-2 rounded text-white hover:opacity-90 transition"
+      >
+        Post Comment
+      </button>
+    </form>
+  </section>
+
+  <!-- Inject env vars into browser -->
+  <script set:html={`window.SUPABASE_URL = "${SUPABASE_URL}"; window.SUPABASE_KEY = "${SUPABASE_KEY}"; window.CURRENT_SLUG = "${slug}";`}></script>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.js"></script>
+
+  <!-- Real-time comment logic -->
+  <script type="module" is:inline>
+    function renderComment(comment) {
+      const ul = document.getElementById('comment-list');
+      const li = document.createElement('li');
+      li.className = "border border-gray-700 rounded-lg p-4";
+      li.innerHTML = `
+        <p class="text-sm text-gray-400 mb-1">
+          ${new Date(comment.created_at).toLocaleDateString()} — <strong>${comment.author}</strong>
+        </p>
+        <p>${comment.content}</p>
+      `;
+      ul.appendChild(li);
+    }
+
+    function initComments() {
+      const supabase = window.supabase?.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+      if (!supabase) return console.error("Supabase client not available");
+
+      const slug = window.CURRENT_SLUG;
+
+      // Subscribe to new comment inserts for this post
+      supabase.channel('comments-realtime')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'comments',
+          filter: `post_slug=eq.${slug}`
+        }, payload => {
+          if (payload.new.post_slug === slug) {
+            renderComment(payload.new);
+          }
+        })
+        .subscribe();
+
+      // Handle form submit
+      const form = document.querySelector('#comment-form');
+      if (!form) return;
+
+      const authorInput = form.querySelector('input[name="author"]');
+      const contentInput = form.querySelector('textarea[name="content"]');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const author = authorInput.value.trim();
+        const content = contentInput.value.trim();
+        if (!author || !content) return;
+
+        const { error } = await supabase.from("comments").insert([
+          { post_slug: slug, author, content }
+        ]);
+
+        if (error) {
+          alert("Error posting comment");
+          console.error(error);
+        } else {
+          contentInput.value = "";
+          authorInput.value = "";
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", initComments);
+  </script>
 </BaseLayout>
